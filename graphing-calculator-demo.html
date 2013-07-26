@@ -1,0 +1,154 @@
+<html>
+<head>
+    <script type="text/javascript" src="//d3js.org/d3.v3.min.js"></script>
+    <script type="text/javascript" src="//mathjs.org/js/lib/math.min.js"></script>
+    <style type="text/css">
+        svg .axis path, svg .axis line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;
+        }
+        svg .axis text {
+            font-family: sans-serif;
+            font-size: 11px;
+            text-anchor: middle;
+        }
+    </style>
+    <script type="text/javascript">
+        function range_without_zero(low, high, step) {
+            var arr = [idx], idx = low;
+            while (idx <= high) {
+                idx += step;
+                if (idx === 0) { continue; }
+                arr.push(idx)
+            }
+            return arr;
+        }
+        function draw(el_name, _bounds, _fx) {
+            var default_bounds = { x_min: -10, x_max: 10, y_min: -10, y_max: 10, w: 500, h: 250},
+                plot_bounds = _bounds || {},
+                fx = _fx || Math.sin;
+
+            // copy defaults to plot_bounds without overwriting
+            for (var key in default_bounds) {
+                if (default_bounds.hasOwnProperty(key) && !plot_bounds.hasOwnProperty(key)) {
+                    plot_bounds[key] = default_bounds[key]
+                }
+            }
+
+            var svg = d3.select(el_name).append('svg:svg'),
+                w = plot_bounds.w || default_bounds.w,
+                h = plot_bounds.h || default_bounds.h;
+            svg.attr('width', w).attr('height', h);
+
+            var plot_data = [];
+            var dx = plot_bounds.dx || 1;
+            for (var i=plot_bounds.x_min; i<=plot_bounds.x_max; i+= dx) {
+                plot_data.push([i, fx(i)]);
+            }
+
+            var padding = 20,
+                    xMax = d3.max(plot_data, function(d) { return d[0]; }),
+                    yMax = d3.max(plot_data, function(d) { return d[1]; }),
+                    xScale = d3.scale.linear()
+                            .domain([plot_bounds.x_min, plot_bounds.x_max])
+                            .range([padding, w - padding]),
+                    yScale = d3.scale.linear()
+                            .domain([plot_bounds.y_min, plot_bounds.y_max])
+                            .range([h - padding, padding]),
+                    xAxis = d3.svg.axis()
+                            .scale(xScale)
+                            .orient('bottom');
+                    yAxis = d3.svg.axis()
+                            .scale(yScale)
+                            .orient('left');
+
+            xAxis.tickValues(xScale.ticks(xAxis.ticks()).filter(function(x) { return x !== 0; }));
+            yAxis.tickValues(yScale.ticks(yAxis.ticks()).filter(function(x) { return x !== 0; }));
+
+            svg.append('svg:g')
+                    .attr('class', "axis")
+                    .attr('transform', "translate(0," + yScale(0) + ")")
+                    .call(xAxis);
+            svg.append('svg:g')
+                    .attr('class', "axis")
+                    .attr('transform', "translate(" + xScale(0) + ",0)")
+                    .call(yAxis);
+
+            var lineFunction = d3.svg.line()
+                    .x(function(d) { return xScale(d[0]); })
+                    .y(function(d) { return yScale(d[1]); })
+                    .interpolate('basis');
+
+            svg.append('svg:path')
+                    .attr('d', lineFunction(plot_data))
+                    .style('stroke', "rgb(6, 120, 155)")
+                    .style('fill', "none");
+        }
+
+        function validate_and_draw(form) {
+            var bounds = {},
+                el_names = ['x_min', 'x_max', 'y_min', 'y_max', 'w', 'h'];
+
+            for (var i=0; i<el_names.length; i++) {
+                var el_name = el_names[i],
+                    n = parseFloat(form.elements[el_name].value);
+                if (isNaN(n)) {
+                    alert(el_name + " requires a number!");
+                    return false;
+                }
+                bounds[el_name] = n;
+            }
+
+            var func;
+            try {
+                func = math.eval("function f(x) = " + form.elements['func'].value);
+            } catch (err) {
+                alert("Error: " + err.message);
+                return false;
+            }
+
+            document.getElementById('graph').innerHTML = "";
+            draw('#graph', bounds, func);
+            return false;
+        }
+    </script>
+<head>
+<body onload="draw('#graph', {y_min: -1.5, y_max: +1.5});">
+    <div id="graph"></div>
+
+    <form id="inputs" onsubmit="return validate_and_draw(this);">
+        <table>
+            <tr>
+                <td><label for="x_min">Min. X</label></td>
+                <td><input type="text" id="x_min" name="x_min" value="-10"/></td>
+                <td><label for="x_max">Max. X</label></td>
+                <td><input type="text" id="x_max" name="x_max" value="10"/></td>
+            </tr>
+            <tr>
+                <td><label for="y_min">Min. Y</label></td>
+                <td><input type="text" id="y_min" name="y_min" value="-1.5"/></td>
+                <td><label for="y_max">Max. Y</label></td>
+                <td><input type="text" id="y_max" name="y_max" value="1.5"/></td>
+            </tr>
+            <tr>
+                <td><label for="w">Width (px)</label></td>
+                <td><input type="text" id="w" name="w" value="500"/></td>
+                <td><label for="h">Height (px)</label></td>
+                <td><input type="text" id="h" name="h" value="250"/></td>
+            </tr>
+            <tr>
+                <td colspan="4" style="text-align: center;">
+                    <label for="func">f(x) = </label>
+                    <input type="text" id="func" name="func" value="sin(x)" />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="4" style="text-align: center;">
+                    <input type="submit" value="Graph!" />
+                </td>
+            </tr>
+        </table>
+    </form>
+</body>
+</html>
